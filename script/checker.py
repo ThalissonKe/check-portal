@@ -128,15 +128,31 @@ def verificar_link(link, municipio, pasta_prints):
     return resultado
 
 
-# ALTERADO: Função para salvar em JSON
-def salvar_historico(resultados, arquivo_json):
-    """Salva os resultados em um arquivo JSON."""
-    if not resultados:
-        print("Nenhum resultado para salvar.")
+# ALTERADO: Função para ler o histórico antigo e adicionar os novos resultados
+def salvar_historico(novos_resultados, arquivo_json):
+    """Lê o histórico existente, anexa os novos resultados e salva o arquivo JSON."""
+    if not novos_resultados:
+        print("Nenhum resultado novo para salvar.")
         return
+    
+    historico_completo = []
     try:
+        # Tenta ler o arquivo de histórico existente
+        if os.path.exists(arquivo_json) and os.path.getsize(arquivo_json) > 0:
+            with open(arquivo_json, 'r', encoding='utf-8') as f:
+                historico_completo = json.load(f)
+        
+        # Adiciona os novos resultados à lista
+        historico_completo.extend(novos_resultados)
+
+        # Salva a lista completa de volta no arquivo
         with open(arquivo_json, 'w', encoding='utf-8') as f:
-            json.dump(resultados, f, ensure_ascii=False, indent=4)
+            json.dump(historico_completo, f, ensure_ascii=False, indent=4)
+            
+    except json.JSONDecodeError:
+        print("Aviso: O arquivo JSON existente parece estar corrompido. Ele será sobrescrito.")
+        with open(arquivo_json, 'w', encoding='utf-8') as f:
+            json.dump(novos_resultados, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"ERRO ao salvar o arquivo JSON: {e}")
 
