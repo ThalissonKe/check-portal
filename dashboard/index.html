@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Verificação de Portais</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Relatório de Verificação dos Portais</h1>
+    <p>Última atualização: <span id="data-atualizacao">Carregando...</span></p>
+
+    <div class="chart-container">
+        <canvas id="statusChart"></canvas>
+    </div>
+
+    <table id="report-table">
+        <thead>
+            <tr>
+                <th>Município</th>
+                <th>Status</th>
+                <th>Alerta</th>
+                <th>Ano</th>
+                <th>Mês</th>
+                <th>Data/Hora da Verificação</th>
+                <th>Evidência</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="7">Carregando dados...</td></tr>
+        </tbody>
+    </table>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
