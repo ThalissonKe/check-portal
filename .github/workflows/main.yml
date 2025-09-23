@@ -1,0 +1,46 @@
+# Nome do arquivo: .github/workflows/main.yml
+name: Rodar Verificador e Publicar Dashboard
+
+on:
+  schedule:
+    # Agendamento para rodar todo dia às 06:00 (UTC) - 03:00 no Brasil
+    - cron: '0 6 * * *'
+  # Permite que você rode manualmente pela aba "Actions"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Baixa o código do seu repositório (branch main)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Configura o ambiente Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Instala as dependências do Python
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests selenium webdriver-manager
+      
+      # 4. Instala o Google Chrome para o Selenium usar
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      # 5. Roda o seu script para gerar os dados
+      - name: Run Python script
+        run: python script/checker.py
+
+      # 6. Publica o conteúdo da pasta /dashboard na branch gh-pages
+      # Esta action irá criar a branch se ela não existir
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # O nome da pasta que contém o site e os dados gerados
+          publish_dir: ./dashboard
