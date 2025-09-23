@@ -3,9 +3,7 @@ name: Rodar Verificador e Publicar Dashboard
 
 on:
   schedule:
-    # Agendamento para rodar todo dia às 06:00 (UTC) - 03:00 no Brasil
     - cron: '0 6 * * *'
-  # Permite que você rode manualmente pela aba "Actions"
   workflow_dispatch:
 
 jobs:
@@ -36,11 +34,14 @@ jobs:
       - name: Run Python script
         run: python script/checker.py
 
-      # 6. Publica o conteúdo da pasta /dashboard na branch gh-pages
-      # Esta action irá criar a branch se ela não existir
+      # ----- NOVO PASSO DE DEPURAÇÃO ABAIXO -----
+      # 6. Mostra todos os arquivos que serão publicados
+      - name: Listar arquivos para depuração
+        run: ls -R dashboard
+
+      # 7. Publica o conteúdo da pasta /dashboard na branch gh-pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # O nome da pasta que contém o site e os dados gerados
           publish_dir: ./dashboard
