@@ -118,7 +118,7 @@ A integração com o **GitHub** é o que mantém tudo funcionando automaticament
 
 Acesse o dashboard publicado via GitHub Pages:  
 
-➡️ [https://seu-usuario.github.io/monitor-portais-transparencia/](https://seu-usuario.github.io/monitor-portais-transparencia/)  
+➡️ [https://thalissonke.github.io/check-portal/](https://thalissonke.github.io/check-portal/)  
 
 ---
 
