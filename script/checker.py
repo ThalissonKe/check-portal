@@ -130,29 +130,36 @@ def verificar_link(link, municipio, pasta_prints):
 
 # ALTERADO: Função para ler o histórico antigo e adicionar os novos resultados
 def salvar_historico(novos_resultados, arquivo_json):
-    """Lê o histórico existente, anexa os novos resultados e salva o arquivo JSON."""
+    """
+    Lê o histórico existente, anexa os novos resultados,
+    limita o total aos 60 registros mais recentes e salva o arquivo.
+    """
     if not novos_resultados:
         print("Nenhum resultado novo para salvar.")
         return
     
     historico_completo = []
     try:
-        # Tenta ler o arquivo de histórico existente
+        # Passo 1: Tenta ler o arquivo de histórico que já existe
         if os.path.exists(arquivo_json) and os.path.getsize(arquivo_json) > 0:
             with open(arquivo_json, 'r', encoding='utf-8') as f:
                 historico_completo = json.load(f)
         
-        # Adiciona os novos resultados à lista
+        # Passo 2: Adiciona os novos resultados ao final da lista (sem sobrescrever)
         historico_completo.extend(novos_resultados)
 
-        # Salva a lista completa de volta no arquivo
+        # Passo 3 (NOVO): Limita a lista para conter apenas os últimos 60 registros
+        historico_limitado = historico_completo[-60:]
+
+        # Passo 4: Salva a lista já limitada de volta no arquivo
         with open(arquivo_json, 'w', encoding='utf-8') as f:
-            json.dump(historico_completo, f, ensure_ascii=False, indent=4)
+            json.dump(historico_limitado, f, ensure_ascii=False, indent=4)
             
     except json.JSONDecodeError:
-        print("Aviso: O arquivo JSON existente parece estar corrompido. Ele será sobrescrito.")
+        print("Aviso: O arquivo JSON existente parece estar corrompido. Ele será sobrescrito com os novos dados.")
+        # Garante que mesmo em caso de erro, o arquivo novo respeite o limite
         with open(arquivo_json, 'w', encoding='utf-8') as f:
-            json.dump(novos_resultados, f, ensure_ascii=False, indent=4)
+            json.dump(novos_resultados[-60:], f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"ERRO ao salvar o arquivo JSON: {e}")
 
