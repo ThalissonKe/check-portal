@@ -3,43 +3,60 @@ name: Rodar Verificador e Publicar Dashboard
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * *' # Roda todo dia às 03:00 no Brasil
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Baixa o código do seu repositório (branch main)
-      - name: Checkout
+      # 1. Baixa o código do seu projeto (script, dashboard, etc.) da branch `main`
+      - name: Checkout do código principal
         uses: actions/checkout@v4
 
-      # 2. Configura o ambiente Python
+      # 2. (NOVO) Baixa o conteúdo da branch `gh-pages` para ter acesso ao histórico
+      - name: Checkout do histórico (da branch gh-pages)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages # Especifica a branch de publicação
+          path: gh-pages # Baixa para uma pasta separada chamada 'gh-pages'
+
+      # 3. (NOVO) Move o arquivo de histórico antigo para a pasta de trabalho
+      - name: Mover histórico antigo para o local de trabalho
+        run: |
+          # Verifica se o arquivo de histórico existe na pasta que baixamos
+          if [ -f "gh-pages/dashboard/historico_verificacoes.json" ]; then
+            echo "Arquivo de histórico encontrado. Movendo para a pasta do dashboard."
+            # Cria a pasta dashboard se não existir
+            mkdir -p dashboard
+            # Move o arquivo
+            mv gh-pages/dashboard/historico_verificacoes.json dashboard/historico_verificacoes.json
+          else
+            echo "Nenhum arquivo de histórico anterior encontrado. Um novo será criado."
+          fi
+
+      # 4. Configura o ambiente Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 3. Instala as dependências do Python
+      # 5. Instala as dependências do Python
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pandas requests selenium webdriver-manager
       
-      # 4. Instala o Google Chrome para o Selenium usar
+      # 6. Instala o Google Chrome para o Selenium usar
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
 
-      # 5. Roda o seu script para gerar os dados
+      # 7. Roda o seu script Python
+      # Agora ele vai encontrar o histórico antigo, adicionar os novos dados e limitar para 60
       - name: Run Python script
         run: python script/checker.py
 
-      # ----- NOVO PASSO DE DEPURAÇÃO ABAIXO -----
-      # 6. Mostra todos os arquivos que serão publicados
-      - name: Listar arquivos para depuração
-        run: ls -R dashboard
-
-      # 7. Publica o conteúdo da pasta /dashboard na branch gh-pages
+      # 8. Publica o conteúdo da pasta /dashboard na branch gh-pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
