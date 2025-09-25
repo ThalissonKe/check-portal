@@ -1,34 +1,34 @@
 // Em dashboard/script.js
 
-// Variável global para guardar a instância do gráfico histórico
 let historyChartInstance = null;
 
-// Mapa de cores para o gráfico principal
 const colorMap = {
-    'OK': '#2ecc71', // Verde
-    'Poucos registros': '#f1c40f', // Amarelo
-    'Sem dados': '#e74c3c', // Vermelho
-    'Erro': '#e74c3c', // Vermelho
-    'Erro Crítico': '#c0392b', // Vermelho escuro
-    'Não encontrado': '#95a5a6' // Cinza
+    'OK': '#2ecc71',
+    'Poucos registros': '#f1c40f',
+    'Sem dados': '#e74c3c',
+    'Erro': '#e74c3c',
+    'Erro Crítico': '#c0392b',
+    'Não encontrado': '#95a5a6'
 };
 
 document.addEventListener("DOMContentLoaded", function() {
     fetch('historico_verificacoes.json')
         .then(response => response.json())
         .then(data => {
-            // Pega apenas os dados da última execução para a tabela e gráfico principal
-            // Assumindo que o número de municípios é constante
-            const municipios = [...new Set(data.map(item => item.Município))];
-            const ultimosDados = data.slice(-municipios.length);
+            if (data.length === 0) {
+                document.querySelector("#report-table tbody").innerHTML = '<tr><td colspan="7">Nenhum dado encontrado para exibir.</td></tr>';
+                return;
+            }
+
+            const entidadesUnicas = [...new Set(data.map(item => item.Município))];
+            const numeroDeEntidades = entidadesUnicas.length > 0 ? entidadesUnicas.length : 1;
+            const ultimosDados = data.slice(-numeroDeEntidades);
 
             popularTabela(ultimosDados);
             gerarGraficoPrincipal(ultimosDados);
             
-            // Usa todos os dados para o seletor e gráfico histórico
             popularSeletorDeEntidades(data);
 
-            // Adiciona o "escutador" de eventos ao seletor
             document.getElementById('entity-selector').addEventListener('change', (event) => {
                 const entidadeSelecionada = event.target.value;
                 if (entidadeSelecionada) {
@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .catch(error => {
             console.error('Erro ao buscar ou processar os dados:', error);
-            // ... (código de tratamento de erro) ...
+            document.querySelector("#report-table tbody").innerHTML = '<tr><td colspan="7">Falha ao carregar os dados.</td></tr>';
         });
 });
 
@@ -47,7 +47,7 @@ function popularTabela(dados) {
     const dataAtualizacao = document.getElementById("data-atualizacao");
 
     if (dados.length > 0) {
-        dataAtualizacao.textContent = new Date(dados[0]["Data/Hora"].replace(" ", "T")).toLocaleString("pt-BR");
+        dataAtualizacao.textContent = new Date(dados[dados.length - 1]["Data/Hora"].replace(" ", "T")).toLocaleString("pt-BR");
     }
     tableBody.innerHTML = ''; 
 
@@ -83,7 +83,6 @@ function gerarGraficoPrincipal(dados) {
 
     const labels = Object.keys(contagemAlertas);
     const valores = Object.values(contagemAlertas);
-    // Gera as cores dinamicamente com base no mapa de cores
     const backgroundColors = labels.map(label => colorMap[label] || '#bdc3c7');
 
     new Chart(ctx, {
@@ -109,7 +108,7 @@ function popularSeletorDeEntidades(todosOsDados) {
     const seletor = document.getElementById('entity-selector');
     const entidadesUnicas = [...new Set(todosOsDados.map(item => item.Município))].sort();
 
-    seletor.innerHTML = '<option value="">-- Selecione uma entidade --</option>'; // Limpa e adiciona a opção padrão
+    seletor.innerHTML = '<option value="">-- Selecione uma entidade --</option>';
 
     entidadesUnicas.forEach(entidade => {
         const option = document.createElement('option');
@@ -122,7 +121,6 @@ function popularSeletorDeEntidades(todosOsDados) {
 function gerarGraficoHistorico(entidade, todosOsDados) {
     const ctx = document.getElementById('historyChart').getContext('2d');
 
-    // Filtra os dados para a entidade selecionada e os últimos 7 dias
     const hoje = new Date();
     const seteDiasAtras = new Date();
     seteDiasAtras.setDate(hoje.getDate() - 7);
@@ -132,13 +130,11 @@ function gerarGraficoHistorico(entidade, todosOsDados) {
         return item.Município === entidade && dataItem >= seteDiasAtras && dataItem <= hoje;
     });
 
-    // Mapeia o status para um valor numérico para o gráfico: OK = 1, Problema = 0
     const dadosParaGrafico = dadosFiltrados.map(item => ({
         x: new Date(item["Data/Hora"].replace(" ", "T")),
         y: (item.Alerta === 'OK' || item.Alerta === 'Poucos registros') ? 1 : 0
     }));
 
-    // Destrói o gráfico anterior se ele existir
     if (historyChartInstance) {
         historyChartInstance.destroy();
     }
@@ -152,7 +148,7 @@ function gerarGraficoHistorico(entidade, todosOsDados) {
                 borderColor: '#3498db',
                 backgroundColor: 'rgba(52, 152, 219, 0.2)',
                 fill: true,
-                stepped: true // Cria um gráfico de "degraus", bom para status
+                stepped: true
             }]
         },
         options: {
@@ -161,13 +157,10 @@ function gerarGraficoHistorico(entidade, todosOsDados) {
                 x: {
                     type: 'time',
                     time: {
-                        unit: 'day',
+                        // REMOVEMOS A LINHA 'unit: day' DAQUI
                         tooltipFormat: 'dd/MM/yyyy HH:mm'
                     },
-                    title: {
-                        display: true,
-                        text: 'Data'
-                    }
+                    title: { display: true, text: 'Data' }
                 },
                 y: {
                     ticks: {
@@ -177,10 +170,7 @@ function gerarGraficoHistorico(entidade, todosOsDados) {
                             if (value === 0) return 'Com Falha';
                         }
                     },
-                    title: {
-                        display: true,
-                        text: 'Status'
-                    }
+                    title: { display: true, text: 'Status' }
                 }
             }
         }
