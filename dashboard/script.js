@@ -54,7 +54,6 @@ function popularTabela(dados) {
 }
 
 function gerarGraficoPrincipal(dados) {
-    // ... (esta função está correta, não precisa mudar)
     const ctx = document.getElementById('statusChart').getContext('2d');
     const contagemAlertas = dados.reduce((acc, item) => {
         const alerta = item.Alerta || "Não definido";
@@ -68,7 +67,6 @@ function gerarGraficoPrincipal(dados) {
 }
 
 function popularSeletorDeEntidades(todosOsDados) {
-    // ... (esta função está correta, não precisa mudar)
     const seletor = document.getElementById('entity-selector');
     const entidadesUnicas = [...new Set(todosOsDados.map(item => item.Município))].sort();
     seletor.innerHTML = '<option value="">-- Selecione uma entidade --</option>';
@@ -76,30 +74,21 @@ function popularSeletorDeEntidades(todosOsDados) {
 }
 
 function gerarGraficoHistorico(entidade, todosOsDados) {
-    // ----- INÍCIO DAS MUDANÇAS COM 'console.log' -----
-    console.clear(); // Limpa o console para facilitar a leitura
-    console.log("--- INICIANDO DEPURAÇÃO DO GRÁFICO HISTÓRICO ---");
-    console.log("Entidade selecionada:", entidade);
-    console.log("Total de registros recebidos:", todosOsDados.length);
-
     const ctx = document.getElementById('historyChart').getContext('2d');
+
+    // ----- INÍCIO DA CORREÇÃO FINAL -----
     const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999); // Define o limite do filtro para o final do dia de hoje
+
     const seteDiasAtras = new Date();
     seteDiasAtras.setDate(hoje.getDate() - 7);
-    
-    console.log("Filtrando entre as datas:", seteDiasAtras.toLocaleString('pt-BR'), "e", hoje.toLocaleString('pt-BR'));
+    seteDiasAtras.setHours(0, 0, 0, 0); // Define o início do filtro para o começo do dia (7 dias atrás)
+    // ----- FIM DA CORREÇÃO FINAL -----
 
     const dadosFiltrados = todosOsDados.filter(item => {
         const dataItem = new Date(item["Data/Hora"].replace(" ", "T"));
-        const correspondeEntidade = item.Município === entidade;
-        const estaNoIntervalo = dataItem >= seteDiasAtras && dataItem <= hoje;
-        return correspondeEntidade && estaNoIntervalo;
+        return item.Município === entidade && dataItem >= seteDiasAtras && dataItem <= hoje;
     });
-
-    console.log("Total de registros APÓS o filtro:", dadosFiltrados.length);
-    console.log("Dados que serão plotados:", dadosFiltrados);
-    console.log("--- FIM DA DEPURAÇÃO ---");
-    // ----- FIM DAS MUDANÇAS COM 'console.log' -----
 
     const dadosParaGrafico = dadosFiltrados.map(item => ({
         x: new Date(item["Data/Hora"].replace(" ", "T")),
