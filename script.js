@@ -374,20 +374,26 @@ function gerarGraficoHistorico(entidade) {
   const hoje = new Date();
   hoje.setHours(23, 59, 59, 999);
 
-  // vamos olhar os últimos 28 dias (4 semanas)
-  const inicio = new Date();
-  inicio.setDate(hoje.getDate() - 27);
-  inicio.setHours(0, 0, 0, 0);
+  // Início da SEMANA ATUAL: domingo
+  const inicioSemana = new Date(hoje);
+  const diaSemana = inicioSemana.getDay(); // 0 = Dom, 6 = Sáb
+  inicioSemana.setDate(inicioSemana.getDate() - diaSemana);
+  inicioSemana.setHours(0, 0, 0, 0);
+
+  // Fim da semana: sábado
+  const fimSemana = new Date(inicioSemana);
+  fimSemana.setDate(fimSemana.getDate() + 6);
+  fimSemana.setHours(23, 59, 59, 999);
 
   const umDiaMs = 24 * 60 * 60 * 1000;
 
-  // Filtra registros da entidade e do período
+  // Filtra registros da entidade só na semana atual
   const dadosFiltrados = dadosHistorico.filter((item) => {
     const dataItem = parseData(item["Data/Hora"]);
     return (
       item["Município"] === entidade &&
-      dataItem >= inicio &&
-      dataItem <= hoje
+      dataItem >= inicioSemana &&
+      dataItem <= fimSemana
     );
   });
 
@@ -400,34 +406,34 @@ function gerarGraficoHistorico(entidade) {
     const nivel = statusToLevel(item["Alerta"]);
 
     const atual = mapaDiaNivel.get(diaChave);
-    // queremos guardar o "pior" status do dia (menor nível)
+    // guardamos o "pior" status do dia (menor nível)
     if (atual === undefined || nivel < atual.nivel) {
       mapaDiaNivel.set(diaChave, { nivel, data: d });
     }
   });
 
-  // Monta estrutura para o heatmap (x = semana, y = dia da semana)
+  // Monta os 7 dias da semana (Dom..Sáb)
   const datas = [];
-  for (let d = new Date(inicio); d <= hoje; d = new Date(d.getTime() + umDiaMs)) {
+  for (
+    let d = new Date(inicioSemana), idx = 0;
+    d <= fimSemana;
+    d = new Date(d.getTime() + umDiaMs), idx++
+  ) {
     const diaChave = d.toISOString().slice(0, 10);
     const info = mapaDiaNivel.get(diaChave);
-
     const nivel = info ? info.nivel : null;
 
-    const dayOfWeek = d.getDay(); // 0=Dom, 6=Sáb
-    const weekIndex = Math.floor((d - inicio) / umDiaMs / 7);
-
     datas.push({
-      x: weekIndex,
-      y: dayOfWeek,
+      x: idx,       // 0..6
+      y: 0,         // única linha ("Semana")
       v: nivel,
       date: new Date(d)
     });
   }
 
-  const numWeeks = Math.ceil((hoje - inicio + 1) / umDiaMs / 7);
-
   if (historyChartInstance) historyChartInstance.destroy();
+
+  const diasLabel = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   historyChartInstance = new Chart(ctx, {
     type: "matrix",
@@ -447,11 +453,11 @@ function gerarGraficoHistorico(entidade) {
           borderColor: "rgba(148, 163, 184, 0.4)",
           width: (ctx) => {
             const area = ctx.chart.chartArea;
-            return area ? area.width / numWeeks - 4 : 16;
+            return area ? area.width / 7 - 4 : 24;
           },
           height: (ctx) => {
             const area = ctx.chart.chartArea;
-            return area ? area.height / 7 - 4 : 16;
+            return area ? area.height - 4 : 24;
           }
         }
       ]
@@ -484,22 +490,23 @@ function gerarGraficoHistorico(entidade) {
         x: {
           type: "linear",
           position: "bottom",
+          min: -0.5,
+          max: 6.5,
           ticks: {
             stepSize: 1,
-            callback: (value) => `Semana ${value + 1}`
+            callback: (value) => diasLabel[value] ?? ""
           },
           title: {
             display: true,
-            text: "Semanas (últimos 28 dias)"
+            text: "Semana atual (Dom a Sáb)"
           },
           offset: true
         },
         y: {
           type: "category",
-          labels: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+          labels: ["Semana"],
           title: {
-            display: true,
-            text: "Dia da semana"
+            display: false
           },
           offset: true
         }
@@ -507,6 +514,7 @@ function gerarGraficoHistorico(entidade) {
     }
   });
 }
+
 
 
 /* Modal de prints */
