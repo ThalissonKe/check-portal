@@ -12,6 +12,14 @@ const colorMap = {
   "Não encontrado": "#95a5a6"
 };
 
+// 0 = Erro/sem dados, 1 = Alerta, 2 = OK
+function statusToLevel(alerta) {
+  if (alerta === "OK") return 2;
+  if (alerta === "Poucos registros") return 1;
+  // "Sem dados", "Erro", "Erro Crítico", etc.
+  return 0;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     const response = await fetch("historico_verificacoes.json");
@@ -151,30 +159,56 @@ function gerarGraficoStatus() {
   if (statusChartInstance) statusChartInstance.destroy();
 
   statusChartInstance = new Chart(ctx, {
-    type: "doughnut",
+    type: "bar",
     data: {
       labels,
       datasets: [
         {
-          label: "Status dos Portais",
+          label: "Quantidade de portais",
           data: valores,
           backgroundColor: backgroundColors,
-          borderColor: "#fff",
-          borderWidth: 2
+          borderRadius: 6,
+          maxBarThickness: 26
         }
       ]
     },
     options: {
+      indexAxis: "y", // deixa horizontal
       responsive: true,
       plugins: {
-        legend: { position: "bottom" },
+        legend: { display: false },
         title: {
-          display: false
+          display: true,
+          text: "Distribuição de Status (Última Verificação)"
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.x} portal(is)`
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          },
+          title: {
+            display: true,
+            text: "Quantidade de portais"
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: "Alerta"
+          }
         }
       }
     }
   });
 }
+
 
 function popularTabela() {
   const tbody = document.querySelector("#report-table tbody");
@@ -340,72 +374,140 @@ function gerarGraficoHistorico(entidade) {
   const hoje = new Date();
   hoje.setHours(23, 59, 59, 999);
 
-  const seteDiasAtras = new Date();
-  seteDiasAtras.setDate(hoje.getDate() - 7);
-  seteDiasAtras.setHours(0, 0, 0, 0);
+  // vamos olhar os últimos 28 dias (4 semanas)
+  const inicio = new Date();
+  inicio.setDate(hoje.getDate() - 27);
+  inicio.setHours(0, 0, 0, 0);
 
+  const umDiaMs = 24 * 60 * 60 * 1000;
+
+  // Filtra registros da entidade e do período
   const dadosFiltrados = dadosHistorico.filter((item) => {
     const dataItem = parseData(item["Data/Hora"]);
     return (
       item["Município"] === entidade &&
-      dataItem >= seteDiasAtras &&
+      dataItem >= inicio &&
       dataItem <= hoje
     );
   });
 
-  const dadosParaGrafico = dadosFiltrados.map((item) => ({
-    x: parseData(item["Data/Hora"]),
-    y:
-      item["Alerta"] === "OK" || item["Alerta"] === "Poucos registros"
-        ? 1
-        : 0
-  }));
+  // Mapa: chave = YYYY-MM-DD, valor = pior nível do dia (0 <= 1 <= 2)
+  const mapaDiaNivel = new Map();
+
+  dadosFiltrados.forEach((item) => {
+    const d = parseData(item["Data/Hora"]);
+    const diaChave = d.toISOString().slice(0, 10); // "2025-11-24"
+    const nivel = statusToLevel(item["Alerta"]);
+
+    const atual = mapaDiaNivel.get(diaChave);
+    // queremos guardar o "pior" status do dia (menor nível)
+    if (atual === undefined || nivel < atual.nivel) {
+      mapaDiaNivel.set(diaChave, { nivel, data: d });
+    }
+  });
+
+  // Monta estrutura para o heatmap (x = semana, y = dia da semana)
+  const datas = [];
+  for (let d = new Date(inicio); d <= hoje; d = new Date(d.getTime() + umDiaMs)) {
+    const diaChave = d.toISOString().slice(0, 10);
+    const info = mapaDiaNivel.get(diaChave);
+
+    const nivel = info ? info.nivel : null;
+
+    const dayOfWeek = d.getDay(); // 0=Dom, 6=Sáb
+    const weekIndex = Math.floor((d - inicio) / umDiaMs / 7);
+
+    datas.push({
+      x: weekIndex,
+      y: dayOfWeek,
+      v: nivel,
+      date: new Date(d)
+    });
+  }
+
+  const numWeeks = Math.ceil((hoje - inicio + 1) / umDiaMs / 7);
 
   if (historyChartInstance) historyChartInstance.destroy();
 
   historyChartInstance = new Chart(ctx, {
-    type: "line",
+    type: "matrix",
     data: {
       datasets: [
         {
           label: `Histórico de Status para ${entidade}`,
-          data: dadosParaGrafico,
-          borderColor: "#3498db",
-          backgroundColor: "rgba(52, 152, 219, 0.2)",
-          fill: true,
-          stepped: true
+          data: datas,
+          backgroundColor: (ctx) => {
+            const value = ctx.raw.v;
+            if (value === null) return "rgba(148, 163, 184, 0.2)"; // sem verificação
+            if (value === 2) return "rgba(34, 197, 94, 0.8)";      // OK
+            if (value === 1) return "rgba(249, 115, 22, 0.8)";     // Poucos registros
+            return "rgba(239, 68, 68, 0.85)";                      // Erro / Sem dados
+          },
+          borderWidth: 1,
+          borderColor: "rgba(148, 163, 184, 0.4)",
+          width: (ctx) => {
+            const area = ctx.chart.chartArea;
+            return area ? area.width / numWeeks - 4 : 16;
+          },
+          height: (ctx) => {
+            const area = ctx.chart.chartArea;
+            return area ? area.height / 7 - 4 : 16;
+          }
         }
       ]
     },
     options: {
       responsive: true,
-      parsing: false,
-      scales: {
-        x: {
-          type: "time",
-          time: { tooltipFormat: "dd/MM/yyyy HH:mm" },
-          title: {
-            display: true,
-            text: "Data"
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const raw = items[0].raw;
+              return raw.date.toLocaleDateString("pt-BR");
+            },
+            label: (items) => {
+              const v = items.raw.v;
+              if (v === null) return "Sem verificação";
+              if (v === 2) return "OK";
+              if (v === 1) return "Poucos registros";
+              return "Erro / Sem dados";
+            }
           }
         },
-        y: {
-          min: 0,
-          max: 1,
+        title: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          type: "linear",
+          position: "bottom",
           ticks: {
             stepSize: 1,
-            callback: (value) => {
-              if (value === 1) return "OK";
-              if (value === 0) return "Com falha";
-              return value;
-            }
+            callback: (value) => `Semana ${value + 1}`
           },
-          title: { display: true, text: "Status" }
+          title: {
+            display: true,
+            text: "Semanas (últimos 28 dias)"
+          },
+          offset: true
+        },
+        y: {
+          type: "category",
+          labels: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+          title: {
+            display: true,
+            text: "Dia da semana"
+          },
+          offset: true
         }
       }
     }
   });
 }
+
 
 /* Modal de prints */
 
