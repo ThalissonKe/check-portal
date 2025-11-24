@@ -149,7 +149,7 @@ def salvar_historico(novos_resultados, arquivo_json):
         historico_completo.extend(novos_resultados)
 
         # Passo 3 (NOVO): Limita a lista para conter apenas os últimos 60 registros
-        historico_limitado = historico_completo[-60:]
+        historico_limitado = historico_completo[-600:]
 
         # Passo 4: Salva a lista já limitada de volta no arquivo
         with open(arquivo_json, 'w', encoding='utf-8') as f:
@@ -159,7 +159,7 @@ def salvar_historico(novos_resultados, arquivo_json):
         print("Aviso: O arquivo JSON existente parece estar corrompido. Ele será sobrescrito com os novos dados.")
         # Garante que mesmo em caso de erro, o arquivo novo respeite o limite
         with open(arquivo_json, 'w', encoding='utf-8') as f:
-            json.dump(novos_resultados[-60:], f, ensure_ascii=False, indent=4)
+            json.dump(novos_resultados[-600:], f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"ERRO ao salvar o arquivo JSON: {e}")
 
