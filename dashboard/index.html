@@ -1,51 +1,139 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Verificação de Portais</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard de Verificação de Portais</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Adapter de datas (já usava) -->
+  <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
-    <h1>Relatório de Verificação dos Portais</h1>
-    <p>Última atualização: <span id="data-atualizacao">Carregando...</span></p>
-
-    <div class="chart-container">
-        <canvas id="statusChart"></canvas>
+  <header class="topbar">
+    <div>
+      <h1>Relatório de Verificação dos Portais</h1>
+      <p class="subtitle">
+        Monitoramento automatizado dos portais da transparência municipais.
+      </p>
     </div>
+    <div class="last-update">
+      <span>Última atualização</span>
+      <strong id="data-atualizacao">Carregando...</strong>
+    </div>
+  </header>
 
-    <div class="history-container">
-      <label for="entity-selector">Selecione uma entidade para ver o histórico:</label>
-      <select id="entity-selector">
-        <option value="">-- Carregando entidades --</option>
-      </select>
-      <div class="chart-container">
-        <canvas id="historyChart"></canvas>
+  <main class="container">
+    <!-- Filtros -->
+    <section class="filters card">
+      <div class="filter-group">
+        <label for="filtroBusca">Buscar município</label>
+        <input type="text" id="filtroBusca" placeholder="Digite o nome do município..." />
       </div>
-    </div>
+      <div class="filter-group">
+        <label for="filtroAno">Ano</label>
+        <select id="filtroAno">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filtroMes">Mês</label>
+        <select id="filtroMes">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filtroAlerta">Alerta</label>
+        <select id="filtroAlerta">
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </section>
 
-    <table id="report-table">
-        <thead>
+    <!-- KPIs -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Portais monitorados</span>
+        <span class="kpi-value" id="kpiTotalPortais">-</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Portais OK</span>
+        <span class="kpi-value" id="kpiOkCount">-</span>
+        <span class="kpi-extra" id="kpiOkPercent"></span>
+      </div>
+      <div class="kpi-card kpi-warning">
+        <span class="kpi-label">Com alerta/falha</span>
+        <span class="kpi-value" id="kpiProblemaCount">-</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Tempo médio de carregamento</span>
+        <span class="kpi-value" id="kpiTempoMedio">-</span>
+      </div>
+    </section>
+
+    <!-- Gráficos -->
+    <section class="charts-grid">
+      <article class="card">
+        <h2>Distribuição de Status (Última Verificação)</h2>
+        <div class="chart-container">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header-inline">
+          <h2>Histórico por Entidade (últimos 7 dias)</h2>
+          <select id="entity-selector">
+            <option value="">-- Selecione uma entidade --</option>
+          </select>
+        </div>
+        <div class="chart-container">
+          <canvas id="historyChart"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <!-- Tabela -->
+    <section class="card">
+      <h2>Detalhes da última verificação por portal</h2>
+      <div class="table-wrapper">
+        <table id="report-table">
+          <thead>
             <tr>
-                <th>Município</th>
-                <th>Status</th>
-                <th>Alerta</th>
-                <th>Ano</th>
-                <th>Mês</th>
-                <th>Data/Hora da Verificação</th>
-                <th>Evidência</th>
+              <th>Município</th>
+              <th>Status</th>
+              <th>Alerta</th>
+              <th>Ano</th>
+              <th>Mês</th>
+              <th>Data/Hora da Verificação</th>
+              <th>Tempo (s)</th>
+              <th>Evidência</th>
             </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="7">Carregando dados...</td></tr>
-        </tbody>
-    </table>
+          </thead>
+          <tbody>
+            <tr><td colspan="8">Carregando dados...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    
-    <script src="script.js"></script>
+  <!-- Modal para prints -->
+  <div class="modal" id="modalPrint">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-content">
+      <button class="modal-close" data-modal-close>&times;</button>
+      <img id="modalPrintImg" src="" alt="Print da verificação" />
+    </div>
+  </div>
+
+  <footer class="footer">
+    Monitor de Portais da Transparência · GitHub Pages
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
